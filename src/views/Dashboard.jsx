@@ -1,0 +1,32 @@
+import { useStore } from '../store.jsx';
+import { Badge, Card, Empty, PageTitle, SEVERITIES, Table, Uuid, fmt, td } from '../components/ui.jsx';
+
+export default function Dashboard() {
+  const { db, v, projectName, setView, setSelectedScanId } = useStore();
+  const count = (k) => v.findings.filter((f) => f.severity === k).length;
+  const scans = [...v.scans].sort((a, b) => b.started_at.localeCompare(a.started_at)).slice(0, 5);
+  const kpi = [['Proyectos activos', db.projects.filter((p) => p.status === 'ACTIVE').length], ['Total scans', v.scans.length],
+    ['Hallazgos abiertos', v.findings.filter((f) => f.status === 'OPEN').length]];
+  return (
+    <>
+      <PageTitle title="Dashboard" subtitle="Resumen de la actividad de auditoría" />
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {kpi.map(([l, n]) => <Card key={l} className="p-4"><p className="text-sm text-slate-500">{l}</p><p className="text-3xl font-semibold">{n}</p></Card>)}
+        <Card className="p-4"><p className="mb-1 text-sm text-slate-500">Por severidad</p>
+          <div className="grid grid-cols-2 gap-1">{SEVERITIES.map((s) => <div key={s} className="flex items-center gap-2"><Badge v={s} /><b>{count(s)}</b></div>)}</div></Card>
+      </div>
+      <Card title="Últimos análisis ejecutados" className="mb-5">
+        {scans.length ? <Table heads={['ID', 'Proyecto', 'Inicio', 'Fin', 'Archivos', 'Hallazgos', 'Estado']}>
+          {scans.map((s) => (
+            <tr key={s.id} onClick={() => { setSelectedScanId(s.id); setView('findings'); }} className="cursor-pointer hover:bg-slate-50">
+              <td className={td}><Uuid id={s.id} /></td><td className={td}>{projectName(s.project_id)}</td><td className={td}>{fmt(s.started_at)}</td>
+              <td className={td}>{fmt(s.finished_at)}</td><td className={td}>{s.files_scanned}</td><td className={td}>{s.findings_count}</td>
+              <td className={td}><Badge v={s.status} /></td></tr>))}</Table> : <Empty text="No hay análisis para este proyecto." />}
+      </Card>
+      <Card title="Eventos de seguridad recientes">
+        {v.events.length ? <Table heads={['Fecha', 'Tipo', 'Descripción']}>
+          {v.events.slice(0, 6).map((e) => <tr key={e.id}><td className={td}>{fmt(e.created_at)}</td>
+            <td className={td}><code className="text-xs">{e.event_type}</code></td><td className={td}>{e.description}</td></tr>)}</Table> : <Empty text="Sin eventos." />}
+      </Card>
+    </>);
+}
