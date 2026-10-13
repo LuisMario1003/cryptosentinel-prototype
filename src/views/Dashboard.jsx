@@ -1,5 +1,5 @@
 import { useStore } from '../store.jsx';
-import { Activity, AlertTriangle, ArrowUpRight, FolderKanban, ScanLine, ShieldCheck, Sparkles } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowUpRight, FolderKanban, Radar, ScanLine, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { Badge, Card, Empty, SEVERITIES, Table, Uuid, fmt, td } from '../components/ui.jsx';
 
 export default function Dashboard() {
@@ -7,6 +7,9 @@ export default function Dashboard() {
   const count = (k) => v.findings.filter((f) => f.severity === k).length;
   const scans = [...v.scans].sort((a, b) => b.started_at.localeCompare(a.started_at)).slice(0, 5);
   const activeProjects = db.projects.filter((p) => p.status === 'ACTIVE' && (activeProjectId === 'ALL' || p.id === activeProjectId)).length;
+  const highFindings = count('HIGH');
+  const mediumFindings = count('MEDIUM');
+  const securityScore = Math.max(42, 100 - (highFindings * 12) - (mediumFindings * 5) - (count('LOW') * 2));
   const kpi = [['Proyectos activos', activeProjects], ['Total scans', v.scans.length],
     ['Hallazgos abiertos', v.findings.filter((f) => f.status === 'OPEN').length]];
   const drillIntoFindings = (filters) => { setFindingFilters(filters); setSelectedScanId('ALL'); setView('findings'); };
@@ -45,6 +48,13 @@ export default function Dashboard() {
           <div className="severity-list">{SEVERITIES.map((s) => <button type="button" key={s} className="severity-link" aria-label={`Ver hallazgos ${s}: ${count(s)}`} onClick={() => drillIntoFindings({ severity: s, status: '' })}>
             <Badge v={s} /><b className="text-sm text-slate-700">{count(s)}</b><ArrowUpRight className="severity-arrow h-3.5 w-3.5" /></button>)}</div></Card>
       </div>
+      <section className="security-lens mb-6">
+        <div className="lens-copy"><span className="lens-kicker"><Radar className="h-3.5 w-3.5" /> INTELIGENCIA DE RIESGO</span><h2>Postura de seguridad</h2><p>Una lectura rápida de los hallazgos abiertos y la cobertura de revisión del espacio de trabajo.</p>
+          <div className="lens-actions"><button type="button" onClick={() => drillIntoFindings({ severity: 'HIGH', status: 'OPEN' })}><Zap className="h-4 w-4" /> Priorizar riesgos altos</button><span><span className="live-dot" /> Actualización en vivo</span></div>
+        </div>
+        <div className="score-wrap"><div className="score-ring" style={{ '--score': `${securityScore * 3.6}deg` }}><div className="score-core"><b>{securityScore}</b><span>/ 100</span><small>NIVEL ACTUAL</small></div></div><p>Índice de protección</p></div>
+        <div className="risk-stack"><div><span><i className="risk-dot high" /> Críticos para revisar</span><b>{highFindings}</b><em>ALTA</em></div><div><span><i className="risk-dot medium" /> Revisión recomendada</span><b>{mediumFindings}</b><em>MEDIA</em></div><div><span><i className="risk-dot healthy" /> Análisis completados</span><b>{v.scans.filter((s) => s.status === 'COMPLETED').length}</b><em>LISTOS</em></div></div>
+      </section>
       <Card title="Últimos análisis ejecutados" action={<span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">ÚLTIMOS 5</span>} className="mb-5">
         {scans.length ? <Table heads={['ID', 'Proyecto', 'Inicio', 'Fin', 'Archivos', 'Hallazgos', 'Estado']}>
           {scans.map((s) => (
