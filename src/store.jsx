@@ -13,6 +13,7 @@ export function StoreProvider({ children }) {
   const [view, setView] = useState('dashboard');
   const [activeProjectId, setActiveProjectId] = useState('ALL');
   const [selectedScanId, setSelectedScanId] = useState(null);
+  const [findingFilters, setFindingFilters] = useState({ severity: '', status: '' });
   const [toast, setToast] = useState(null);
   const ref = useRef(db); ref.current = db;
 
@@ -77,7 +78,7 @@ export function StoreProvider({ children }) {
   }, [db, activeProjectId]);
 
   const projectName = (id) => db.projects.find((p) => p.id === id)?.name ?? '—';
-  const value = { db, v, view, setView, activeProjectId, setActiveProjectId, selectedScanId, setSelectedScanId, toast, notify,
+  const value = { db, v, view, setView, activeProjectId, setActiveProjectId, selectedScanId, setSelectedScanId, findingFilters, setFindingFilters, toast, notify,
     addProject, toggleProject, toggleRule, startScan, setFindingStatus, generateReport, projectName };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

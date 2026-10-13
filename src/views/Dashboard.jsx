@@ -1,20 +1,49 @@
 import { useStore } from '../store.jsx';
-import { Activity, AlertTriangle, FolderKanban, ScanLine } from 'lucide-react';
-import { Badge, Card, Empty, PageTitle, SEVERITIES, Table, Uuid, fmt, td } from '../components/ui.jsx';
+import { Activity, AlertTriangle, ArrowUpRight, FolderKanban, ScanLine, ShieldCheck, Sparkles } from 'lucide-react';
+import { Badge, Card, Empty, SEVERITIES, Table, Uuid, fmt, td } from '../components/ui.jsx';
 
 export default function Dashboard() {
-  const { db, v, projectName, setView, setSelectedScanId } = useStore();
+  const { db, v, projectName, activeProjectId, setView, setSelectedScanId, setFindingFilters } = useStore();
   const count = (k) => v.findings.filter((f) => f.severity === k).length;
   const scans = [...v.scans].sort((a, b) => b.started_at.localeCompare(a.started_at)).slice(0, 5);
-  const kpi = [['Proyectos activos', db.projects.filter((p) => p.status === 'ACTIVE').length], ['Total scans', v.scans.length],
+  const activeProjects = db.projects.filter((p) => p.status === 'ACTIVE' && (activeProjectId === 'ALL' || p.id === activeProjectId)).length;
+  const kpi = [['Proyectos activos', activeProjects], ['Total scans', v.scans.length],
     ['Hallazgos abiertos', v.findings.filter((f) => f.status === 'OPEN').length]];
+  const drillIntoFindings = (filters) => { setFindingFilters(filters); setSelectedScanId('ALL'); setView('findings'); };
+  const cardActions = [() => setView('projects'), () => setView('scanner'), () => drillIntoFindings({ severity: '', status: 'OPEN' })];
+  const cardDestinations = ['Ver proyectos', 'Abrir escáner', 'Revisar hallazgos abiertos'];
   return (
     <>
-      <PageTitle title="Dashboard" subtitle="Resumen de la actividad de auditoría" action={<span className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700"><Activity className="h-3.5 w-3.5" />Monitoreo activo</span>} />
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpi.map(([l, n], i) => { const Icon = [FolderKanban, ScanLine, AlertTriangle][i]; return <Card key={l} className="kpi-card p-4"><div className="mb-3 flex items-center justify-between"><p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{l}</p><span className={`kpi-icon kpi-${i}`}><Icon className="h-4 w-4" /></span></div><p className="text-3xl font-semibold tracking-tight text-slate-900">{n}</p><p className="mt-1 text-xs text-slate-400">{i === 2 ? 'Requieren atención' : 'En el espacio de trabajo'}</p></Card>})}
-        <Card className="kpi-card p-4"><p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Por severidad</p>
-          <div className="grid grid-cols-2 gap-1">{SEVERITIES.map((s) => <div key={s} className="flex items-center gap-2"><Badge v={s} /><b>{count(s)}</b></div>)}</div></Card>
+      <section className="command-hero mb-6 overflow-hidden rounded-2xl text-white">
+        <div className="hero-grid" aria-hidden="true" />
+        <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
+        <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
+        <div className="hero-content">
+          <div className="hero-copy">
+            <span className="hero-eyebrow"><Sparkles className="h-3.5 w-3.5" /> CENTRO DE OPERACIONES DE SEGURIDAD</span>
+            <h1>Tu código.<br /><span>Bajo vigilancia.</span></h1>
+            <p>Detecta secretos expuestos y riesgos antes de que lleguen a producción.</p>
+            <button className="hero-cta" onClick={() => setView('scanner')}><ScanLine className="h-4 w-4" /> Iniciar un análisis <ArrowUpRight className="h-4 w-4" /></button>
+          </div>
+          <div className="hero-visual" aria-hidden="true">
+            <div className="hero-ring ring-outer" /><div className="hero-ring ring-middle" /><div className="hero-ring ring-inner" />
+            <div className="hero-shield"><ShieldCheck className="h-12 w-12" strokeWidth={1.35} /></div>
+            <span className="hero-node node-one" /><span className="hero-node node-two" /><span className="hero-node node-three" />
+            <div className="hero-signal"><span className="signal-dot" /><span>SISTEMA PROTEGIDO</span></div>
+          </div>
+        </div>
+        <div className="hero-footer"><span className="hero-footer-label"><span className="live-dot" /> TELEMETRÍA EN VIVO</span><span>CryptoSentinel <b>/</b> Auditoría de código</span><span className="hero-footer-right">{v.scans.length} análisis registrados <Activity className="h-3.5 w-3.5" /></span></div>
+      </section>
+
+      <div className="section-heading mb-3"><div><span className="section-kicker">VISTA GENERAL</span><h2>Estado de seguridad</h2></div><span className="section-period">{activeProjectId === 'ALL' ? 'Todos los proyectos' : projectName(activeProjectId)}</span></div>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {kpi.map(([l, n], i) => { const Icon = [FolderKanban, ScanLine, AlertTriangle][i]; return <button type="button" key={l} onClick={cardActions[i]} aria-label={`${cardDestinations[i]}: ${n} ${l.toLowerCase()}`} className={`kpi-card kpi-action kpi-card-${i}`}>
+          <span className="kpi-card-top"><span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{l}</span><span className={`kpi-icon kpi-${i}`}><Icon className="h-4 w-4" /></span></span>
+          <span className="block text-3xl font-semibold tracking-tight text-slate-900">{n}</span><span className="kpi-card-bottom"><span>{i === 2 ? 'Requieren atención' : 'En el espacio de trabajo'}</span><span className="kpi-card-link">{cardDestinations[i]} <ArrowUpRight className="h-3.5 w-3.5" /></span></span>
+        </button>})}
+        <Card className="kpi-card kpi-severity"><div className="mb-3 flex items-center justify-between"><p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Por severidad</p><span className="kpi-icon kpi-3"><ShieldCheck className="h-4 w-4" /></span></div>
+          <div className="severity-list">{SEVERITIES.map((s) => <button type="button" key={s} className="severity-link" aria-label={`Ver hallazgos ${s}: ${count(s)}`} onClick={() => drillIntoFindings({ severity: s, status: '' })}>
+            <Badge v={s} /><b className="text-sm text-slate-700">{count(s)}</b><ArrowUpRight className="severity-arrow h-3.5 w-3.5" /></button>)}</div></Card>
       </div>
       <Card title="Últimos análisis ejecutados" action={<span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">ÚLTIMOS 5</span>} className="mb-5">
         {scans.length ? <Table heads={['ID', 'Proyecto', 'Inicio', 'Fin', 'Archivos', 'Hallazgos', 'Estado']}>
